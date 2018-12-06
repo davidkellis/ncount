@@ -1,9 +1,10 @@
 use crate::{
     collector::{Collector, Stats},
-    error::Result,
+    error::{Error, Result},
     opt::Opt,
 };
-use std::path::{Path, PathBuf};
+use std::io;
+use std::path::Path;
 
 pub struct Application;
 
@@ -11,7 +12,15 @@ impl Application {
     pub fn run(&self, opt: &Opt) -> Result<()> {
         let mut collector = Collector::new();
 
-        for path in read_paths(opt.path())? {
+        let paths = opt.paths();
+        if paths.is_empty() {
+            return Err(Error::from(io::Error::new(
+                io::ErrorKind::Other,
+                "No paths provided",
+            )));
+        }
+
+        for path in paths {
             apply_path(&path, &mut collector)?;
         }
 
@@ -31,7 +40,7 @@ fn apply_path(path: &Path, collector: &mut Collector) -> Result<()> {
 fn apply_str(text: &str, collector: &mut Collector) -> Result<()> {
     use crate::parse::{MarkdownParser, Rule};
     use pest::Parser;
-    
+
     let document = MarkdownParser::parse(Rule::Document, &text)?;
 
     let mut heading = None;
@@ -67,23 +76,6 @@ fn heading_name(s: &str) -> String {
         .to_owned()
 }
 
-fn read_paths(path: &Path) -> Result<Vec<PathBuf>> {
-    use walkdir::WalkDir;
-
-    let mut paths = Vec::new();
-
-    for entry in WalkDir::new(path).into_iter() {
-        let entry = entry?;
-
-        if entry.file_type().is_file() {
-            paths.push(entry.into_path());
-        }
-    }
-
-    paths.sort();
-    Ok(paths)
-}
-
 #[cfg(test)]
 mod tests {
     use super::apply_str;
@@ -107,4 +99,3 @@ mod tests {
         assert_eq!(9, paragraph_count, "{:?}", collector.overall_stats());
     }
 }
-
