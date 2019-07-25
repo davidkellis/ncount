@@ -1,32 +1,39 @@
-use crate::parse::Rule;
+use std::error;
+use std::fmt::{self, Display};
 use std::io;
-use std::result;
-
-pub type Result<T> = result::Result<T, Error>;
-
-type PestError = pest::error::Error<Rule>;
 
 #[derive(Debug)]
 pub enum Error {
+    Glob(glob::PatternError),
     IO(io::Error),
-    Parse(PestError),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Glob(e) => write!(f, "{}", e),
+            Error::IO(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Error::Glob(e) => Some(e),
+            Error::IO(e) => Some(e),
+        }
+    }
+}
+
+impl From<glob::PatternError> for Error {
+    fn from(e: glob::PatternError) -> Self {
+        Error::Glob(e)
+    }
 }
 
 impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Error {
+    fn from(e: io::Error) -> Self {
         Error::IO(e)
-    }
-}
-
-impl From<PestError> for Error {
-    fn from(e: PestError) -> Error {
-        Error::Parse(e)
-    }
-}
-
-impl From<walkdir::Error> for Error {
-    fn from(e: walkdir::Error) -> Error {
-        // Sloppy, but whatever...
-        io::Error::from(e).into()
     }
 }

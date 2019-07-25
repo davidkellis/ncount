@@ -1,21 +1,12 @@
-use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct Opt {
-    #[structopt(parse(from_os_str))]
-    path: Option<PathBuf>,
+    pub pattern: String,
 }
 
 impl Opt {
-    pub fn from_args() -> Opt {
+    pub fn from_args() -> Self {
         StructOpt::from_args()
-    }
-
-    pub fn path(&self) -> &Path {
-        match self.path {
-            None => Path::new("."),
-            Some(ref path) => path,
-        }
     }
 }
