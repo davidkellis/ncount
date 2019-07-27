@@ -84,5 +84,9 @@ mod tests {
         // At present, the above count comes out wrong because we're capturing any headers that 
         // come through but then throwing away any subsequent text. This means the only text that
         // is counted is what which follows a comment but NOT a header.
+
+        // What we're eventually gonna end up doing here, if we aren't careful, is rewriting pest.
+        // It's possible that the best way forward here is to take what I have with regard to a
+        // framework and import the pest processor code into it.
     }
 }
