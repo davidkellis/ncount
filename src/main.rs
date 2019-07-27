@@ -33,4 +33,3 @@ fn main() -> Result<()> {
 // fn is_whitespace(s: &str) -> bool {
 //     s.bytes().all(|u| u.is_ascii_whitespace())
 // }
-

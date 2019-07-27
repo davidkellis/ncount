@@ -2,7 +2,7 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct Opt {
-    pub pattern: String,
+    pub patterns: Vec<String>,
 }
 
 impl Opt {

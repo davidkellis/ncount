@@ -1,65 +1,64 @@
 use std::path::PathBuf;
+use std::{fs, vec};
 
 pub struct Tree {
-    paths: glob::Paths,
+    paths: Vec<PathBuf>,
 }
 
 impl Tree {
-    pub fn new(pattern: &str) -> crate::Result<Self> {
-        Ok(Tree {
-            paths: glob::glob(pattern)?,
-        })
-    }
-}
+    pub fn new<S>(patterns: &[S]) -> crate::Result<Self>
+    where
+        S: AsRef<str> + Into<PathBuf>,
+    {
+        let mut paths = Vec::new();
 
-// WARNING: all this iterator crap below here is kinda pointless.
+        for pattern in patterns.into_iter().map(AsRef::as_ref) {
+            match fs::metadata(pattern) {
+                Ok(meta) => {
+                    if meta.is_file() {
+                        paths.push(pattern.into());
+                    } else {
+                        let entries = walkdir::WalkDir::new(pattern)
+                            .into_iter()
+                            .filter_entry(|entry| entry.file_type().is_file())
+                            .filter_map(|entry| entry.ok().map(|entry| entry.into_path()));
 
-pub struct TreeIter<'tree> {
-    tree: &'tree mut Tree,
-}
+                        paths.extend(entries);
+                    }
+                }
 
-impl Iterator for TreeIter<'_> {
-    type Item = PathBuf;
+                // In the event we receive a path that does not exist, we'll assume it's meant
+                // as a glob rather than as a path. If not, fuck it.
+                Err(_) => {
+                    let entries = glob::glob(pattern)?
+                        .filter_map(Result::ok)
+                        .filter_map(|entry| match entry.metadata() {
+                            Ok(meta) => {
+                                if meta.is_file() {
+                                    Some(entry)
+                                } else {
+                                    None
+                                }
+                            }
+                            Err(_) => None,
+                        });
 
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Ok(path) = self.tree.paths.next()? {
-                return Some(path)
+                    paths.extend(entries);
+                }
             }
         }
-    }
-}
 
-impl<'tree> IntoIterator for &'tree mut Tree {
-    type Item = PathBuf;
-    type IntoIter = TreeIter<'tree>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        TreeIter { tree: self }
-    }
-}
-
-pub struct TreeIntoIter {
-    paths: glob::Paths,
-}
-
-impl Iterator for TreeIntoIter {
-    type Item = PathBuf;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Ok(path) = self.paths.next()? {
-                return Some(path);
-            }
-        }
+        paths.sort();
+        paths.dedup();
+        Ok(Tree { paths })
     }
 }
 
 impl IntoIterator for Tree {
     type Item = PathBuf;
-    type IntoIter = TreeIntoIter;
+    type IntoIter = vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        TreeIntoIter { paths: self.paths }
+        self.paths.into_iter()
     }
 }
