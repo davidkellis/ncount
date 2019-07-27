@@ -13,7 +13,9 @@ impl App {
         let mut collector = Collector::new();
 
         for path in Tree::new(&opt.patterns)? {
-            let name = path.file_name().expect("Tree iteration provides ONLY the paths of files.");
+            let name = path
+                .file_name()
+                .expect("Tree iteration provides ONLY the paths of files.");
 
             println!("{:?}", name.to_str());
         }
